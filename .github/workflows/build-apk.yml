@@ -26,6 +26,29 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
+      # Keep the same debug signing key between GitHub Actions runs so
+      # future Pocket Alex builds can update the app already on Esther's phone.
+      - name: Restore Pocket Alex signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: pocket-alex-debug-signing-v1
+
+      - name: Ensure Android debug signing key exists
+        run: |
+          mkdir -p ~/.android
+          if [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore ~/.android/debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Pocket Alex Debug,O=Pocket Alex,C=TW"
+          fi
+
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
 
