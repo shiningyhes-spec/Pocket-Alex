@@ -6,7 +6,6 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.widget.RemoteViews
 import java.time.LocalTime
 
@@ -61,16 +60,11 @@ class AlexWidgetProvider : AppWidgetProvider() {
             )
         )
 
-        // Prefer the installed ChatGPT Android app. Fall back to the web only if needed.
-        val appChat = Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/")).apply {
-            setPackage("com.openai.chatgpt")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        val chatIntent = if (appChat.resolveActivity(context.packageManager) != null) {
-            appChat
-        } else {
-            Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/"))
-        }
+        // Open the installed ChatGPT Android app directly.
+        val chatIntent = context.packageManager
+            .getLaunchIntentForPackage("com.openai.chatgpt")
+            ?.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+            ?: Intent(context, MainActivity::class.java)
         views.setOnClickPendingIntent(
             R.id.chatButton,
             PendingIntent.getActivity(
