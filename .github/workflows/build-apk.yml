@@ -26,8 +26,6 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
-      # The private signing key lives only in GitHub Actions Secrets.
-      # Every future build uses the same key, so Android can update Pocket Alex in place.
       - name: Install permanent Pocket Alex signing key
         env:
           POCKET_ALEX_KEYSTORE_BASE64: ${{ secrets.POCKET_ALEX_KEYSTORE_BASE64 }}
@@ -42,6 +40,11 @@ jobs:
 
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
+
+      - name: Verify APK signing certificate
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload Pocket Alex APK
         uses: actions/upload-artifact@v4
