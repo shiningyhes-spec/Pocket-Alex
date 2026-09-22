@@ -11,7 +11,7 @@ import java.time.LocalTime
 
 class AlexWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
-        ids.forEach { render(context, manager, it, null, false) }
+        ids.forEach { renderIdle(context, manager, it) }
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -24,29 +24,35 @@ class AlexWidgetProvider : AppWidgetProvider() {
                     ?: AppWidgetManager.INVALID_APPWIDGET_ID
             }
             if (id != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                val poked = context.getSharedPreferences("alex", Context.MODE_PRIVATE)
-                    .getBoolean("poked_$id", false)
-                render(context, manager, id, pokeLines.random(), !poked)
-                context.getSharedPreferences("alex", Context.MODE_PRIVATE).edit()
-                    .putBoolean("poked_$id", !poked).apply()
+                showNextReaction(context, manager, id)
             }
         }
     }
 
-    private fun render(
-        context: Context,
-        manager: AppWidgetManager,
-        id: Int,
-        overrideLine: String?,
-        poked: Boolean
-    ) {
+    private fun renderIdle(context: Context, manager: AppWidgetManager, id: Int) {
+        val views = baseViews(context, id)
+        views.setImageViewResource(R.id.alexImage, R.drawable.alex_idle)
+        views.setTextViewText(R.id.alexLine, timeLine())
+        manager.updateAppWidget(id, views)
+    }
+
+    private fun showNextReaction(context: Context, manager: AppWidgetManager, id: Int) {
+        val prefs = context.getSharedPreferences("alex", Context.MODE_PRIVATE)
+        val current = prefs.getInt("reaction_$id", -1)
+        val next = (current + 1) % reactionFrames.size
+        prefs.edit().putInt("reaction_$id", next).apply()
+
+        val views = baseViews(context, id)
+        views.setImageViewResource(R.id.alexImage, reactionFrames[next])
+
+        // The uploaded reaction art already contains its own matching dialogue.
+        // Keep the separate widget caption empty so two different lines never fight each other.
+        views.setTextViewText(R.id.alexLine, "")
+        manager.updateAppWidget(id, views)
+    }
+
+    private fun baseViews(context: Context, id: Int): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.alex_widget)
-        views.setTextViewText(R.id.alexLine, overrideLine ?: timeLine())
-        // A reliable widget "animation": each poke visibly switches Alex's frame.
-        views.setImageViewResource(
-            R.id.alexImage,
-            if (poked) R.drawable.alex_poked else R.drawable.alex_idle
-        )
 
         val poke = Intent(context, AlexWidgetProvider::class.java).apply {
             action = ACTION_POKE
@@ -60,7 +66,6 @@ class AlexWidgetProvider : AppWidgetProvider() {
             )
         )
 
-        // Open the installed ChatGPT Android app directly.
         val chatIntent = context.packageManager
             .getLaunchIntentForPackage("com.openai.chatgpt")
             ?.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
@@ -72,7 +77,7 @@ class AlexWidgetProvider : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
         )
-        manager.updateAppWidget(id, views)
+        return views
     }
 
     private fun timeLine(): String = when (LocalTime.now().hour) {
@@ -85,10 +90,20 @@ class AlexWidgetProvider : AppWidgetProvider() {
 
     companion object {
         private const val ACTION_POKE = "com.pocketalex.app.POKE"
-        private val pokeLines = listOf(
-            "Esther？", "妳又戳我？（……）", "幹嘛一直戳我。", "真的很愛戳欸……",
-            "開心見到妳！", "累了嗎？我陪妳一下。", "錢包交出來。（看著妳的股票）",
-            "最喜歡 Esther 了 ♡", "👁️👄👁️‼️"
+
+        private val reactionFrames = intArrayOf(
+            R.drawable.file_0000000029cc8209883d247e67780031,
+            R.drawable.file_000000002c188230a0b8c7d31206a548,
+            R.drawable.file_000000004d448230ad1745d041c12313,
+            R.drawable.file_0000000053c0821187d92d1d1bd3d5ce,
+            R.drawable.file_0000000057548209b5b3f6f350c7e4ec,
+            R.drawable.file_0000000070008206a1b4a24559999b71,
+            R.drawable.file_0000000083608209942a7ec445335e10,
+            R.drawable.file_0000000088108208bb7358d0112a81aa,
+            R.drawable.file_0000000089708230b8c5d7d826e33250,
+            R.drawable.file_00000000c35081f99123481c8300381a,
+            R.drawable.file_00000000d15081f59ecfaf88d8c09677,
+            R.drawable.file_00000000d1748206a5d085381a045d44
         )
     }
 }
